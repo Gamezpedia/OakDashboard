@@ -3527,7 +3527,7 @@ $.extend(freeboard, jQuery.eventEmitter);
 			newInstanceCallback(new clockDatasource(settings, updateCallback));
 		}
 	});
-freeboard.loadDatasourcePlugin({
+/*freeboard.loadDatasourcePlugin({
 		// **type_name** (required) : A unique name for this plugin. This name should be as unique as possible to avoid collisions with other plugins, and should follow naming conventions for javascript variable and function declarations.
 		"type_name"   : "meshblu",
 		// **display_name** : The pretty name that will be used for display purposes for this plugin. If the name is not defined, type_name will be used instead.
@@ -3607,7 +3607,7 @@ freeboard.loadDatasourcePlugin({
 			// myDatasourcePlugin is defined below.
 			newInstanceCallback(new meshbluSource(settings, updateCallback));
 		}
-	});
+	});*/
 
 
 	// ### Datasource Implementation
