@@ -19,6 +19,7 @@
     <script type="text/javascript">
     var particle_devices = [];
     var particle_token = "";
+    var auth = ""; //fill in with auth token to skip login
 
 
 $(function()
@@ -37,55 +38,7 @@ $(function()
                 $('#login_register').attr('disabled',false);
                 $('#login_password').val("");
                 particle_token = data.body.access_token;
-
-                particle.listDevices({ auth: particle_token }).then(
-                    
-                    function(devices){
-                        //console.log(devices);
-                        $('#login_error').hide();
-                        $('#devices_error').hide();
-                        $('#login_email').val("");
-                        $('#login_box').hide();
-                        $.each(devices.body,function(key,device){
-                            var deviceName = 'Unnamed ('+device.id+')';
-                            if(device.name != null){
-                                deviceName = device.name+' ('+device.id+')';
-                            }
-                            particle_devices.push({"name":deviceName,"value":device.id});
-                        });
-                    
-                        head.js("js/freeboard_plugins.js",
-                            "plugins/epoch.js",
-                            "plugins/particle.js",
-                            "plugins/widget.ragIndicator.js",
-                                // *** Load more plugins here ***
-                                function(){
-
-                                    
-                                    
-                                        //console.log(particle_devices);
-                                        freeboard.initialize(true);
-
-
-
-
-                                        var hashpattern = window.location.hash.match(/(&|#|\?)source=([^&]+)/);
-                                        if (hashpattern !== null) {
-                                            $.getJSON(hashpattern[2], function(data) {
-                                                freeboard.loadDashboard(data, function() {
-                                                    freeboard.setEditing(false);
-                                                });
-                                            });
-                                        }
-
-                                    
-                        });
-                    },
-                    function(err){
-                        $('#devices_error').show();
-
-                    }
-                );
+                getDevices();
             },
             function(err) {
                 $('#login_button').attr('disabled',false);
@@ -95,6 +48,73 @@ $(function()
             }
         );
     });
+
+    if (auth != ''){
+        particle_token = auth;
+        getDevices();
+    }
+
+    function getDevices(){
+        particle.listDevices({ auth: particle_token }).then(
+            
+            function(devices){
+                //console.log(devices);
+                $('#login_error').hide();
+                $('#devices_error').hide();
+                $('#login_email').val("");
+                $('#login_box').hide();
+                $.each(devices.body,function(key,device){
+                    var deviceName = 'Unnamed ('+device.id+')';
+                    if(device.name != null){
+                        deviceName = device.name+' ('+device.id+')';
+                    }
+                    particle_devices.push({"name":deviceName,"value":device.id});
+                });
+            
+                head.js("js/freeboard_plugins.js",
+                    "plugins/epoch.js",
+                    "plugins/particle.js",
+                    "plugins/widget.ragIndicator.js",
+                        // *** Load more plugins here ***
+                        function(){
+
+                            
+                            
+                                //console.log(particle_devices);
+                                freeboard.initialize(true);
+
+                                saveToServer = function(){
+                                    $.post('https://digistump.com/dashboard/save.php?id='+dashboard_id,{'data':JSON.stringify(freeboard.serialize())},function(){
+                                        var contentElement = $('<p>Your dashboard has been saved to the server. To access it bookmark this page or use the following link: <a href="https://digistump.com/dashboard/?id='+dashboard_id+'">https://digistump.com/dashboard/?id='+dashboard_id+'</a></p>');
+                                        freeboard.showDialog(contentElement, "Saved to Server", "OK");
+                                    });
+                                };
+
+                                $.getJSON('https://s3.amazonaws.com/digistump-dashboard/'+dashboard_id+'?t='+Date.now(), function(data) {
+                                    freeboard.loadDashboard(data, function() {
+                                        freeboard.setEditing(true);
+                                    });
+                                });
+
+
+                                var hashpattern = window.location.hash.match(/(&|#|\?)source=([^&]+)/);
+                                if (hashpattern !== null) {
+                                    $.getJSON(hashpattern[2], function(data) {
+                                        freeboard.loadDashboard(data, function() {
+                                            freeboard.setEditing(false);
+                                        });
+                                    });
+                                }
+
+                            
+                });
+            },
+            function(err){
+                $('#devices_error').show();
+
+            }
+        );
+    };
 });
     </script>
 </head>

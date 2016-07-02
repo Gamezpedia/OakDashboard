@@ -22,13 +22,16 @@
  * IN THE SOFTWARE.
  *****************************************************************************/
 (function() {
+
     var EpochRealtimeWidgetPlugin = function (settings) {
+        var titleElement = $('<h2 class="section-title"></h2>');
+        var firstValue = {"data0" : true,"data1" : true,"data2" : true,"data3" : true,"data4" : true};
         var self = this;
         var currentSettings = settings;
         var myChart;
         var myContainer;
         var myChartWrapper= $('<div class="epoch-theme-dark"></div>');
-        var myChartElement = $('<div  class="epoch"></div>');
+        var myChartElement = $('<div class="epoch"></div>');
         var lastChartWidth = 0;
         var resizeInterval;
         var updateInterval;
@@ -39,7 +42,19 @@
 
         self.render = function(container) {
             myContainer = container;
-            myChartWrapper.append(myChartElement.height(currentSettings.height*2*60-10))
+            if(currentSettings.title != ""){
+                titleElement.html(currentSettings.title);
+                titleElement.attr("style", null);
+            }
+            else{
+                titleElement.hide();
+                titleElement.empty();
+            }
+            myChartWrapper.append(titleElement);
+            if(currentSettings.title != "")
+                myChartWrapper.append(myChartElement.height(currentSettings.height*2*60-25));
+            else
+                myChartWrapper.append(myChartElement.height(currentSettings.height*2*60-10));
             $(container).append(myChartWrapper);
 
             var chartData = [];
@@ -104,10 +119,24 @@
                 rebuild = 1;
             }
 
+            if(newSettings.title != ""){
+                titleElement.html(newSettings.title);
+                titleElement.attr("style", null);
+                myChartElement.height(currentSettings.height*2*60-25);
+            }
+            else{
+                titleElement.hide();
+                titleElement.empty();
+                myChartElement.height(currentSettings.height*2*60-10);
+            }
+
 
             if(!rebuild){
                 if(currentSettings.height != newSettings.height){
-                    myChartElement.height(currentSettings.height*2*60-10);
+                    if(newSettings.title != "")
+                        myChartElement.height(newSettings.height*2*60-25);
+                    else
+                        myChartElement.height(newSettings.height*2*60-10);
                 }
                 if(currentSettings.update_interval !== newSettings.update_interval || (newSettings.series_option!=currentSettings.series_option && newSettings.series_option == 3)){
                     clearInterval(updateInterval);
@@ -148,8 +177,16 @@
         }
 
         self.onCalculatedValueChanged = function(settingName, newValue) {
+            if((settingName == "data0" || settingName == "data1" || settingName == "data2" || settingName == "data3" || settingName == "data4") && firstValue[settingName]){
+                firstValue[settingName] = false;
+                if(newValue == 0)
+                    return;
+            }
             if ((settingName == "changeInterval" || settingName == "data0" || settingName == "data1" || settingName == "data2" || settingName == "data3" || settingName == "data4") && currentSettings.data1 !== undefined) {
 
+                if(settingName != "changeInterval" && isNaN(newValue)){
+                        return;
+                    }
 
                 if(currentSettings.series_option == 1){
                     var tsm = Date.now();
@@ -239,7 +276,7 @@
             myContainer = null;
         };
     };
-/*
+
     freeboard.loadWidgetPlugin({
         type_name:          "epoch_plugin",
         display_name:       "Time Series Graphs",
@@ -249,6 +286,11 @@
                                 "https://cdn.jsdelivr.net/epoch/0.8.4/epoch.min.js"
                             ],
         settings:           [
+                                {
+                                    name: "title",
+                                    display_name: "Title",
+                                    type: "text"
+                                },
                                 {
                                     name:           "plot_type",
                                     display_name:   "Plot Type",
@@ -332,7 +374,7 @@
     });
 
 
-
+/*
 
         var EpochPieWidgetPlugin = function (settings) {
         var self = this;

@@ -4,14 +4,32 @@
 if(empty($_GET['id'])){
     //assign a new id
     $newid  = bin2hex(openssl_random_pseudo_bytes(20));
-    header('Location: https://digistump.com/dashboard/?id='.$newid);
+    header('Location: https://digistump.com/dashboard/'.$newid);
+    exit();
+}
+if(strlen($_GET['id'])==41 && stripos($_GET['id'], '/') !== false){
+    $id  = substr($_GET['id'], 0, 40);
+    if(!empty($_GET['auth'])){
+        $auth = '?auth='.$_GET['auth'];
+    }
+    else{
+        $auth = '';
+    }
+    header('Location: https://digistump.com/dashboard/'.$id.$auth);
     exit();
 }
 if(strlen($_GET['id'])!=40){
     //assign a new id
     $newid  = bin2hex(openssl_random_pseudo_bytes(20));
-    header('Location: https://digistump.com/dashboard/?id='.$newid);
+    header('Location: https://digistump.com/dashboard/'.$newid);
     exit();
+}
+
+if(!empty($_GET['auth'])){
+    $auth = $_GET['auth'];
+}
+else{
+    $auth = '';
 }
 
 ?>
@@ -19,7 +37,7 @@ if(strlen($_GET['id'])!=40){
 <head>
     <meta charset="UTF-8">
     <title>Digistump Dashboard (for Particle Devices)</title>
-	<meta name="mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="viewport" content = "width = device-width, initial-scale = 1, user-scalable = no" />
@@ -36,11 +54,11 @@ if(strlen($_GET['id'])!=40){
     var particle_devices = [];
     var particle_token = "";
     var dashboard_id = "<?=$_GET['id']?>";
-
+    var auth = "<?=$auth?>";
 
     var saveToServer;
     var bookmarkme = function () {
-      var url = 'https://digistump.com/dashboard/?id=' + dashboard_id; 
+      var url = 'https://digistump.com/dashboard/' + dashboard_id; 
       var name = "Digistump Dashboard (for Particle Devices)";
 
       if (navigator.userAgent.toLowerCase().indexOf('chrome') > -1){ //chrome
@@ -81,66 +99,7 @@ $(function()
                 $('#login_register').attr('disabled',false);
                 $('#login_password').val("");
                 particle_token = data.body.access_token;
-
-                particle.listDevices({ auth: particle_token }).then(
-                    
-                    function(devices){
-                        //console.log(devices);
-                        $('#login_error').hide();
-                        $('#devices_error').hide();
-                        $('#login_email').val("");
-                        $('#login_box').hide();
-                        $.each(devices.body,function(key,device){
-                            var deviceName = 'Unnamed ('+device.id+')';
-                            if(device.name != null){
-                                deviceName = device.name+' ('+device.id+')';
-                            }
-                            particle_devices.push({"name":deviceName,"value":device.id});
-                        });
-                    
-                        head.js("js/freeboard_plugins.js",
-                            "plugins/epoch.js",
-                            "plugins/particle.js",
-                            "plugins/widget.ragIndicator.js",
-                                // *** Load more plugins here ***
-                                function(){
-
-                                    
-                                    
-                                        //console.log(particle_devices);
-                                        freeboard.initialize(true);
-
-                                        saveToServer = function(){
-                                            $.post('https://digistump.com/dashboard/save.php?id='+dashboard_id,{'data':JSON.stringify(freeboard.serialize())},function(){
-                                                var contentElement = $('<p>Your dashboard has been saved to the server. To access it bookmark this page or use the following link: <a href="https://digistump.com/dashboard/?id='+dashboard_id+'">https://digistump.com/dashboard/?id='+dashboard_id+'</a></p>');
-                                                freeboard.showDialog(contentElement, "Saved to Server", "OK");
-                                            });
-                                        };
-
-                                        $.getJSON('https://s3.amazonaws.com/digistump-dashboard/'+dashboard_id, function(data) {
-                                            freeboard.loadDashboard(data, function() {
-                                                freeboard.setEditing(true);
-                                            });
-                                        });
-
-
-                                        var hashpattern = window.location.hash.match(/(&|#|\?)source=([^&]+)/);
-                                        if (hashpattern !== null) {
-                                            $.getJSON(hashpattern[2], function(data) {
-                                                freeboard.loadDashboard(data, function() {
-                                                    freeboard.setEditing(false);
-                                                });
-                                            });
-                                        }
-
-                                    
-                        });
-                    },
-                    function(err){
-                        $('#devices_error').show();
-
-                    }
-                );
+                getDevices();
             },
             function(err) {
                 $('#login_button').attr('disabled',false);
@@ -150,6 +109,73 @@ $(function()
             }
         );
     });
+
+    if (auth != ''){
+        particle_token = auth;
+        getDevices();
+    }
+
+    function getDevices(){
+        particle.listDevices({ auth: particle_token }).then(
+            
+            function(devices){
+                //console.log(devices);
+                $('#login_error').hide();
+                $('#devices_error').hide();
+                $('#login_email').val("");
+                $('#login_box').hide();
+                $.each(devices.body,function(key,device){
+                    var deviceName = 'Unnamed ('+device.id+')';
+                    if(device.name != null){
+                        deviceName = device.name+' ('+device.id+')';
+                    }
+                    particle_devices.push({"name":deviceName,"value":device.id});
+                });
+            
+                head.js("js/freeboard_plugins.js",
+                    "plugins/epoch.js",
+                    "plugins/particle.js",
+                    "plugins/widget.ragIndicator.js",
+                        // *** Load more plugins here ***
+                        function(){
+
+                            
+                            
+                                //console.log(particle_devices);
+                                freeboard.initialize(true);
+
+                                        saveToServer = function(){
+                                            $.post('https://digistump.com/dashboard/save.php?id='+dashboard_id,{'data':JSON.stringify(freeboard.serialize())},function(){
+                                            var contentElement = $('<p>Your dashboard has been saved to the server. To access it bookmark this page or use the following link: <a href="https://digistump.com/dashboard/'+dashboard_id+'">https://digistump.com/dashboard/'+dashboard_id+'</a><br><br>To access it and skip the Particle login use the following link. NOTE: This link contains your Particle authentication token, do not share this link, anyone with this link can alter your devices and account. <br><a href="https://digistump.com/dashboard/'+dashboard_id+'?auth='+particle_token+'">https://digistump.com/dashboard/'+dashboard_id+'?auth='+particle_token+'</a></p>');
+                                            freeboard.showDialog(contentElement, "Saved to Server", "OK");
+                                    });
+                                };
+
+                                $.getJSON('https://s3.amazonaws.com/digistump-dashboard/'+dashboard_id+'?t='+Date.now(), function(data) {
+                                    freeboard.loadDashboard(data, function() {
+                                        freeboard.setEditing(true);
+                                    });
+                                });
+
+
+                                var hashpattern = window.location.hash.match(/(&|#|\?)source=([^&]+)/);
+                                if (hashpattern !== null) {
+                                    $.getJSON(hashpattern[2], function(data) {
+                                        freeboard.loadDashboard(data, function() {
+                                            freeboard.setEditing(false);
+                                        });
+                                    });
+                                }
+
+                            
+                });
+            },
+            function(err){
+                $('#devices_error').show();
+
+            }
+        );
+    };
 });
     </script>
 </head>
@@ -171,7 +197,7 @@ $(function()
 
 <h3>Saving your dashboard:</h3>
 
-<p><b>Save your dashboard to the server:</b> Click the "Save Dashboard to Server" link in the upper left to save your dashboard to the server. Your dashboard will be saved to the server and loaded whenever you visit the unique link for that dashboard. You can see that link in the address bar, when saving, or here: <a href="https://digistump.com/dashboard/?id=<?=$_GET['id']?>">https://digistump.com/dashboard/?id=<?=$_GET['id']?></a>. Do not share your unique URL with anyone who you don't want to see your dashboard setup. You still must login to the same Particle account when accessing a dashboard, for the Particle datasources to work (and for your security - your browser connects directly to Particle's servers).</p>
+<p><b>Save your dashboard to the server:</b> Click the "Save Dashboard to Server" link in the upper left to save your dashboard to the server. Your dashboard will be saved to the server and loaded whenever you visit the unique link for that dashboard. You can see that link in the address bar, when saving, or here: <a href="https://digistump.com/dashboard/<?=$_GET['id']?>">https://digistump.com/dashboard/<?=$_GET['id']?></a>. Do not share your unique URL with anyone who you don't want to see your dashboard setup. You still must login to the same Particle account when accessing a dashboard, for the Particle datasources to work (and for your security - your browser connects directly to Particle's servers).</p>
 <p><b>Save your dashboard to a file:</b> Click the "Save Dashoard to File" link in the upper left to download a file of your dashboard. This file can then be loaded using the "Load Dashboard from File" link. NOTE: You must login to the same Particle account when loading a file, for the Particle datasources to work.</p>
 <p><b>To make a new dashboard:</b> If you have saved a dashboard to the server and want to make another one, just go to <a href="https://digistump.com/dashboard/">https://digistump.com/dashboard/</a> and you will be redirected to a new unique URL for a new dashboard.</p>
 <p><b>If you do not save your dashboard after making changes, those changes will be lost if you leave or reload the page!</b></p>
@@ -245,16 +271,16 @@ The Digistump Dashboard uses <a href="https://github.com/Freeboard/freeboard">Fr
             </div>
         </div>
     </div>
-	<div id="column-tools" class="responsive-column-width">
-		<ul class="board-toolbar left-columns">
-			<li class="column-tool add" data-bind="click: addGridColumnLeft"><span class="column-icon right"></span><i class="icon-arrow-left icon-white"></i></li>
-			<li class="column-tool sub" data-bind="click: subGridColumnLeft"><span class="column-icon left"></span><i class="icon-arrow-right icon-white"></i></li>
-		</ul>
-		<ul class="board-toolbar right-columns">
-			<li class="column-tool sub" data-bind="click: subGridColumnRight"><span class="column-icon right"></span><i class="icon-arrow-left icon-white"></i></li>
-			<li class="column-tool add" data-bind="click: addGridColumnRight"><span class="column-icon left"></span><i class="icon-arrow-right icon-white"></i></li>
-		</ul>
-	</div>
+    <div id="column-tools" class="responsive-column-width">
+        <ul class="board-toolbar left-columns">
+            <li class="column-tool add" data-bind="click: addGridColumnLeft"><span class="column-icon right"></span><i class="icon-arrow-left icon-white"></i></li>
+            <li class="column-tool sub" data-bind="click: subGridColumnLeft"><span class="column-icon left"></span><i class="icon-arrow-right icon-white"></i></li>
+        </ul>
+        <ul class="board-toolbar right-columns">
+            <li class="column-tool sub" data-bind="click: subGridColumnRight"><span class="column-icon right"></span><i class="icon-arrow-left icon-white"></i></li>
+            <li class="column-tool add" data-bind="click: addGridColumnRight"><span class="column-icon left"></span><i class="icon-arrow-right icon-white"></i></li>
+        </ul>
+    </div>
     <div id="toggle-header" data-bind="click: toggleEditing">
         <i id="toggle-header-icon" class="icon-wrench icon-white"></i></div>
 </header>

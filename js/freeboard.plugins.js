@@ -719,7 +719,12 @@ freeboard.loadDatasourcePlugin({
 			'font-weight:bold; padding-right:5px;');
 	}
 
-	function addValueToSparkline(element, value, legend) {
+	function addValueToSparkline(element, value, legend, history_length) {
+
+        if (value === undefined)
+            return;
+        if (isNaN(value))
+            return;
 		var values = $(element).data().values;
 		var valueMin = $(element).data().valueMin;
 		var valueMax = $(element).data().valueMax;
@@ -733,7 +738,7 @@ freeboard.loadDatasourcePlugin({
 			if(!values[plotIndex]) {
 				values[plotIndex] = [];
 			}
-			if (values[plotIndex].length >= SPARKLINE_HISTORY_LENGTH) {
+			if (values[plotIndex].length >= history_length) {
 				values[plotIndex].shift();
 			}
 			values[plotIndex].push(Number(val));
@@ -927,7 +932,7 @@ freeboard.loadDatasourcePlugin({
                 }
 
                 if (currentSettings.sparkline) {
-                    addValueToSparkline(sparklineElement, newValue);
+                    addValueToSparkline(sparklineElement, newValue, null, currentSettings.history_length);
                 }
             }
         }
@@ -984,6 +989,13 @@ freeboard.loadDatasourcePlugin({
                 name: "sparkline",
                 display_name: "Include Sparkline",
                 type: "boolean"
+            },
+                        {
+                name: "history_length",
+                display_name: "Sparkline History Length",
+                type: "number",
+                default_value: 100,
+                description: "Number of data points to display at one time"
             },
             {
                 name: "animate",
@@ -1136,9 +1148,9 @@ freeboard.loadDatasourcePlugin({
 
         this.onCalculatedValueChanged = function (settingName, newValue) {
 			if (currentSettings.legend) {
-				addValueToSparkline(sparklineElement, newValue, currentSettings.legend.split(","));
+				addValueToSparkline(sparklineElement, newValue, currentSettings.legend.split(","), currentSettings.history_length);
 			} else {
-				addValueToSparkline(sparklineElement, newValue);
+				addValueToSparkline(sparklineElement, newValue, null, currentSettings.history_length);
 			}
         }
 
@@ -1189,7 +1201,14 @@ freeboard.loadDatasourcePlugin({
 				display_name: "Legend",
 				type: "text",
 				description: "Comma-separated for multiple sparklines"
-			}
+			},
+			{
+                name: "history_length",
+                display_name: "Sparkline History Length",
+                type: "number",
+                default_value: 100,
+                description: "Number of data points to display at one time"
+            }
         ],
         newInstance: function (settings, newInstanceCallback) {
             newInstanceCallback(new sparklineWidget(settings));

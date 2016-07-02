@@ -3349,7 +3349,7 @@ $.extend(freeboard, jQuery.eventEmitter);
 		"type_name": "dweet_io",
 		"display_name": "Dweet.io",
 		"external_scripts": [
-			"http://dweet.io/client/dweet.io.min.js"
+			"https://dweet.io/client/dweet.io.min.js"
 		],
 		"settings": [
 			{
@@ -3747,7 +3747,12 @@ $.extend(freeboard, jQuery.eventEmitter);
 			'font-weight:bold; padding-right:5px;');
 	}
 
-	function addValueToSparkline(element, value, legend) {
+	function addValueToSparkline(element, value, legend, history_length) {
+   if (value === undefined)
+            return;
+        
+
+
 		var values = $(element).data().values;
 		var valueMin = $(element).data().valueMin;
 		var valueMax = $(element).data().valueMax;
@@ -3758,10 +3763,12 @@ $.extend(freeboard, jQuery.eventEmitter);
 		}
 
 		var collateValues = function(val, plotIndex) {
+			if (isNaN(val))
+            	return false;
 			if(!values[plotIndex]) {
 				values[plotIndex] = [];
 			}
-			if (values[plotIndex].length >= SPARKLINE_HISTORY_LENGTH) {
+			if (values[plotIndex].length >= history_length) {
 				values[plotIndex].shift();
 			}
 			values[plotIndex].push(Number(val));
@@ -3772,11 +3779,18 @@ $.extend(freeboard, jQuery.eventEmitter);
 			if(valueMax === undefined || val > valueMax) {
 				valueMax = val;
 			}
+			return true;
 		}
 
 		if(_.isArray(value)) {
-			_.each(value, collateValues);
+			_.each(value, function(val, plotIndex){
+				if(!collateValues(val, plotIndex)){
+					return;
+				}
+			});
 		} else {
+			if (isNaN(value))
+            	return;
 			collateValues(value, 0);
 		}
 		$(element).data().values = values;
@@ -3850,7 +3864,7 @@ $.extend(freeboard, jQuery.eventEmitter);
     var textWidget = function (settings) {
 
         var self = this;
-
+        var firstValue = true;
         var currentSettings = settings;
 		var displayElement = $('<div class="tw-display"></div>');
 		var titleElement = $('<h2 class="section-title tw-title tw-td"></h2>');
@@ -3955,7 +3969,14 @@ $.extend(freeboard, jQuery.eventEmitter);
                 }
 
                 if (currentSettings.sparkline) {
-                    addValueToSparkline(sparklineElement, newValue);
+                	if(firstValue){
+        				firstValue = false;
+        				if(newValue == 0)
+        					return;
+        			}
+
+                    addValueToSparkline(sparklineElement, newValue, null, currentSettings.history_length);
+
                 }
             }
         }
@@ -4018,6 +4039,13 @@ $.extend(freeboard, jQuery.eventEmitter);
                 display_name: "Animate Value Changes",
                 type: "boolean",
                 default_value: true
+            },
+            {
+                name: "history_length",
+                display_name: "Sparkline History Length",
+                type: "number",
+                default_value: 100,
+                description: "Number of data points to display at one time"
             },
             {
                 name: "units",
@@ -4143,7 +4171,7 @@ $.extend(freeboard, jQuery.eventEmitter);
 	freeboard.addStyle('.sparkline', "width:100%;height: 75px;");
     var sparklineWidget = function (settings) {
         var self = this;
-
+        var firstValue = true;
         var titleElement = $('<h2 class="section-title"></h2>');
         var sparklineElement = $('<div class="sparkline"></div>');
 		var sparklineLegend = $('<div></div>');
@@ -4163,11 +4191,18 @@ $.extend(freeboard, jQuery.eventEmitter);
         }
 
         this.onCalculatedValueChanged = function (settingName, newValue) {
+        	if(firstValue){
+        		firstValue = false;
+        		if(newValue == 0)
+        			return; 
+        	}
+
 			if (currentSettings.legend) {
-				addValueToSparkline(sparklineElement, newValue, currentSettings.legend.split(","));
+				addValueToSparkline(sparklineElement, newValue, currentSettings.legend.split(","), currentSettings.history_length);
 			} else {
-				addValueToSparkline(sparklineElement, newValue);
+				addValueToSparkline(sparklineElement, newValue, null, currentSettings.history_length);
 			}
+			
         }
 
         this.onDispose = function () {
@@ -4217,7 +4252,14 @@ $.extend(freeboard, jQuery.eventEmitter);
 				display_name: "Legend",
 				type: "text",
 				description: "Comma-separated for multiple sparklines"
-			}
+			},
+			{
+                name: "history_length",
+                display_name: "Sparkline History Length",
+                type: "number",
+                default_value: 100,
+                description: "Number of data points to display at one time"
+            }
         ],
         newInstance: function (settings, newInstanceCallback) {
             newInstanceCallback(new sparklineWidget(settings));
